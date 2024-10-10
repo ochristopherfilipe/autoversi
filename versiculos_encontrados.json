@@ -1,0 +1,56 @@
+[
+    {
+        "livro": "Gênesis",
+        "capitulo": "5",
+        "versiculo_inicio": "22",
+        "versiculo_fim": "24"
+    },
+    {
+        "livro": "Salmos",
+        "capitulo": "25",
+        "versiculo_inicio": "1",
+        "versiculo_fim": "1"
+    },
+    {
+        "livro": "Mateus",
+        "capitulo": "7",
+        "versiculo_inicio": "13",
+        "versiculo_fim": "13"
+    },
+    {
+        "livro": "Salmos",
+        "capitulo": "25",
+        "versiculo_inicio": "1",
+        "versiculo_fim": "1"
+    },
+    {
+        "livro": "Salmos",
+        "capitulo": "23",
+        "versiculo_inicio": "1",
+        "versiculo_fim": "1"
+    },
+    {
+        "livro": "Hebreus",
+        "capitulo": "10",
+        "versiculo_inicio": "25",
+        "versiculo_fim": "25"
+    },
+    {
+        "livro": "Salmos",
+        "capitulo": "25",
+        "versiculo_inicio": "10",
+        "versiculo_fim": "10"
+    },
+    {
+        "livro": "Mateus",
+        "capitulo": "28",
+        "versiculo_inicio": "20",
+        "versiculo_fim": "20"
+    },
+    {
+        "livro": "João",
+        "capitulo": "14",
+        "versiculo_inicio": "16",
+        "versiculo_fim": "16"
+    }
+]
