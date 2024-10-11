@@ -127,7 +127,7 @@ def digitar_comandos(livro, capitulo, versiculo):
     print(f"Digitando comandos: Livro: {livro}, Capítulo: {capitulo}, Versículo: {versiculo}")
 
     # Tempo de espera
-    x = 0.5
+    x = 0.1
 
     try:
         # Converte o nome do livro para minúsculas antes de digitar
@@ -147,7 +147,9 @@ def digitar_comandos(livro, capitulo, versiculo):
         # Digita o versículo
         pyautogui.write(str(versiculo))
         pyautogui.press('enter')
-        time.sleep(x)
+        time.sleep(1)
+        pyautogui.press('enter')
+
 
         # Pressiona F4 para confirmar a seleção no Holyrics
         # pyautogui.press('f4')

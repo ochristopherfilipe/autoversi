@@ -19,7 +19,7 @@ livros_biblia = {
     "Ester": ["ester", "est"],
     "Jó": ["jó", "jo"],
     "Salmos": ["salmos", "salmo", "sl"],
-    "Provérbios": ["provérbios", "proverbios", "pv"],
+    "Provérbios": ["provérbios", "provérbio", "proverbios", "pv"],
     "Eclesiastes": ["eclesiastes", "ecle", "ecl"],
     "Cânticos": ["cânticos", "cant", "ct"],
     "Isaías": ["isaías", "isaias", "is"],
