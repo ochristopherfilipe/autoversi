@@ -16,7 +16,6 @@ def converter_numeros_extenso(texto):
         texto = re.sub(r'\b' + re.escape(extenso) + r'\b', numero, texto, flags=re.IGNORECASE)
     return texto
 
-
 # Função para garantir que números consecutivos sejam separados adequadamente
 def corrigir_numero_consecutivo(texto):
     # Substitui números seguidos sem separação por um espaço entre eles
@@ -34,7 +33,6 @@ def normalizar_nome_livro(nome):
 def escape_book_name(name):
     # Escapa todos os caracteres especiais do regex, mas mantém os espaços
     return re.sub(r'([.^$*+?{}[\]\\|()])', r'\\\1', name)
-
 
 def extrair_referencia_biblica(texto):
     # Converte números por extenso em números
@@ -104,8 +102,6 @@ def extrair_referencia_biblica(texto):
     alternar_para_holyrics()
     digitar_comandos(livro_normalizado, capitulo, versiculo)
 
-
-
 # Função para alternar para o Holyrics
 def alternar_para_holyrics():
     try:
@@ -149,7 +145,6 @@ def digitar_comandos(livro, capitulo, versiculo):
         pyautogui.press('enter')
         time.sleep(1)
         pyautogui.press('enter')
-
 
         # Pressiona F4 para confirmar a seleção no Holyrics
         # pyautogui.press('f4')
@@ -217,36 +212,14 @@ def carregar_versiculos(caminho_arquivo="versiculos_encontrados.json"):
     except FileNotFoundError:
         return []
 
-# Função para exibir versículos prováveis
-def exibir_versiculos_terminal():
-    referencias = carregar_versiculos()
-
-    print("Versículos encontrados:")
-    for ref in referencias:
-        versiculo_texto = f"{ref['livro']} {ref['capitulo']}:{ref['versiculo_inicio']}"
-        if ref['versiculo_inicio'] != ref['versiculo_fim']:
-            versiculo_texto += f"-{ref['versiculo_fim']}"
-        print(versiculo_texto)
-
-# Função para selecionar arquivo PDF usando Tkinter
-def selecionar_arquivo_boletim():
-    caminho_pdf = filedialog.askopenfilename(
-        title="Selecione o boletim em PDF",
-        filetypes=[("PDF files", "*.pdf")]
-    )
-    return caminho_pdf
-
 # Classe principal da aplicação
 class App:
     def __init__(self, master):
         self.master = master
-        master.title("Controle de Voz Holyrics")
+        master.title("AutoVersi")
 
         # Variável para controlar o estado da captura de voz
         self.capturando = False
-
-        # Sensibilidade do microfone (energy threshold)
-        self.sensibilidade = 300  # Valor padrão
 
         # Inicializa o reconhecedor de voz
         self.rec = sr.Recognizer()
@@ -264,16 +237,25 @@ class App:
         # Criação dos widgets
         self.btn_iniciar = tk.Button(master, text="Iniciar Captura", command=self.iniciar_captura)
         self.btn_parar = tk.Button(master, text="Parar Captura", command=self.parar_captura, state=tk.DISABLED)
-        self.btn_ajustar_sensibilidade = tk.Scale(master, from_=100, to=4000, orient=tk.HORIZONTAL, label="Sensibilidade do Microfone")
-        self.btn_ajustar_sensibilidade.set(self.sensibilidade)
         self.btn_selecionar_boletim = tk.Button(master, text="Selecionar Boletim", command=self.processar_boletim)
+
+        # Label para mostrar erros e status
+        self.label_status = tk.Label(master, text="", fg="red")
+
+        # Label para mostrar o texto reconhecido
+        self.label_recognized_text = tk.Label(master, text="", fg="blue")
+
+        # Text widget para mostrar os versículos encontrados
+        self.text_versiculos = tk.Text(master, height=10, width=50)
 
         # Layout dos widgets
         self.dropdown_microfone.pack(pady=5)
         self.btn_iniciar.pack(pady=5)
         self.btn_parar.pack(pady=5)
-        self.btn_ajustar_sensibilidade.pack(pady=5)
         self.btn_selecionar_boletim.pack(pady=5)
+        self.label_status.pack(pady=5)
+        self.label_recognized_text.pack(pady=5)
+        self.text_versiculos.pack(pady=5)
 
         # Thread para o reconhecimento de fala
         self.thread_escuta = None
@@ -284,18 +266,19 @@ class App:
             # Get selected microphone index
             selected_mic = self.microfone_var.get()
             if selected_mic == "Selecione o microfone":
-                print("Por favor, selecione um microfone antes de iniciar a captura.")
+                self.label_status['text'] = "Por favor, selecione um microfone antes de iniciar a captura."
                 return
             try:
                 self.indice_microfone = self.microfones.index(selected_mic)
             except ValueError:
-                print("Microfone selecionado não encontrado.")
+                self.label_status['text'] = "Microfone selecionado não encontrado."
                 return
 
+            # Limpa qualquer mensagem de erro anterior
+            self.label_status['text'] = ""
             self.capturando = True
             self.btn_iniciar.config(state=tk.DISABLED)
             self.btn_parar.config(state=tk.NORMAL)
-            self.sensibilidade = self.btn_ajustar_sensibilidade.get()
             self.thread_escuta = threading.Thread(target=self.reconhecer_fala_continuamente)
             self.thread_escuta.start()
 
@@ -313,14 +296,30 @@ class App:
             texto_pdf = ler_boletim.extrair_texto_pdf(caminho_pdf)
             referencias = ler_boletim.encontrar_referencias(texto_pdf)
             salvar_versiculos_arquivo(referencias)
-            print("Referências encontradas no boletim foram salvas.")
-            exibir_versiculos_terminal()
+            self.label_status['text'] = "Referências encontradas no boletim foram salvas."
+            self.exibir_versiculos_terminal()
         else:
-            print("Nenhum arquivo selecionado.")
+            self.label_status['text'] = "Nenhum arquivo selecionado."
+
+    def exibir_versiculos_terminal(self):
+        referencias = carregar_versiculos()
+        self.text_versiculos.delete('1.0', tk.END)
+        self.text_versiculos.insert(tk.END, "Versículos encontrados:\n")
+        for ref in referencias:
+            versiculo_texto = f"{ref['livro']} {ref['capitulo']}:{ref['versiculo_inicio']}"
+            if ref['versiculo_inicio'] != ref['versiculo_fim']:
+                versiculo_texto += f"-{ref['versiculo_fim']}"
+            self.text_versiculos.insert(tk.END, versiculo_texto + "\n")
 
     def reconhecer_fala_continuamente(self):
-        mic = sr.Microphone(device_index=self.indice_microfone)
-        self.rec.energy_threshold = self.sensibilidade
+        try:
+            mic = sr.Microphone(device_index=self.indice_microfone)
+        except Exception as e:
+            self.label_status['text'] = f"Erro ao acessar o microfone: {e}"
+            self.capturando = False
+            self.btn_iniciar.config(state=tk.NORMAL)
+            self.btn_parar.config(state=tk.DISABLED)
+            return
 
         # Ajusta para ruído ambiente
         with mic as source:
@@ -331,14 +330,15 @@ class App:
             try:
                 texto = recognizer.recognize_google(audio, language="pt-BR")
                 print("Texto reconhecido:", texto)
+                self.label_recognized_text['text'] = "Texto reconhecido: " + texto
 
                 verificar_comando_proximo_anterior(texto)
                 extrair_referencia_biblica(texto)
 
             except sr.UnknownValueError:
-                print("Desculpe, não entendi o que você disse.")
+                self.label_status['text'] = "Desculpe, não entendi o que você disse."
             except sr.RequestError as e:
-                print(f"Erro ao acessar o serviço de reconhecimento de fala: {e}")
+                self.label_status['text'] = f"Erro ao acessar o serviço de reconhecimento de fala: {e}"
 
         self.stop_listening = self.rec.listen_in_background(mic, callback)
 
@@ -348,6 +348,17 @@ class App:
         if self.stop_listening:
             self.stop_listening(wait_for_stop=False)
             self.stop_listening = None
+
+# Função para selecionar arquivo PDF usando Tkinter
+def selecionar_arquivo_boletim():
+    root = tk.Tk()
+    root.withdraw()
+    caminho_pdf = filedialog.askopenfilename(
+        title="Selecione o boletim em PDF",
+        filetypes=[("PDF files", "*.pdf")]
+    )
+    root.destroy()
+    return caminho_pdf
 
 # Executa a aplicação
 if __name__ == "__main__":
