@@ -1,0 +1,367 @@
+import re
+import pyautogui
+import subprocess
+import speech_recognition as sr
+import time
+import tkinter as tk
+from tkinter import filedialog
+import threading
+import json
+from biblia_dicionarios import livros_biblia, numeros_por_extenso
+import ler_boletim
+
+# Função para converter números por extenso em números
+def converter_numeros_extenso(texto):
+    for extenso, numero in numeros_por_extenso.items():
+        texto = re.sub(r'\b' + re.escape(extenso) + r'\b', numero, texto, flags=re.IGNORECASE)
+    return texto
+
+# Função para garantir que números consecutivos sejam separados adequadamente
+def corrigir_numero_consecutivo(texto):
+    # Substitui números seguidos sem separação por um espaço entre eles
+    return re.sub(r'(\d+)(\d+)', r'\1 \2', texto)
+
+# Função para normalizar o nome do livro
+def normalizar_nome_livro(nome):
+    nome = nome.lower().strip()
+    for chave, valores in livros_biblia.items():
+        if nome in [v.lower() for v in valores]:
+            return chave
+    return None  # Retorna None se não encontrar
+
+# Função de escape personalizada
+def escape_book_name(name):
+    # Escapa todos os caracteres especiais do regex, mas mantém os espaços
+    return re.sub(r'([.^$*+?{}[\]\\|()])', r'\\\1', name)
+
+def extrair_referencia_biblica(texto):
+    # Converte números por extenso em números
+    texto = converter_numeros_extenso(texto)
+
+    # Corrige números consecutivos
+    # texto = corrigir_numero_consecutivo(texto)
+
+    # Extrair todas as variações de livros, excluindo as muito curtas
+    book_variations = []
+    for variations in livros_biblia.values():
+        for var in variations:
+            if len(var) >= 3:  # Exclui variações com menos de 3 caracteres
+                book_variations.append(var)
+
+    # Ordenar por tamanho decrescente
+    book_variations = sorted(book_variations, key=lambda x: -len(x))
+
+    # Construir o padrão para livros
+    book_pattern = '|'.join(escape_book_name(name) for name in book_variations)
+
+    # Lista de padrões regex com limites de palavra (\b), ordenados do mais específico para o menos específico
+    patterns = [
+        rf'\b({book_pattern})\b\s+cap[ií]tulo\s+(\d+)\s+(?:vers[ií]culo|verso)\s+(\d+)',  # Livro capítulo X versículo Y
+        rf'\b({book_pattern})\b\s+(\d+):(\d+)',                                           # Livro X:Y
+        rf'\b({book_pattern})\b\s+(\d+)\s+(?:vers[ií]culo|verso)\s+(\d+)',                # Livro X versículo Y
+        rf'\b({book_pattern})\b\s+(\d+)\s+verso\s+(\d+)',                                 # Livro X verso Y
+        rf'\b({book_pattern})\b\s+cap[ií]tulo\s+(\d+)',                                   # Livro capítulo X
+        rf'\b({book_pattern})\b\s+(\d+)',                                                 # Livro capítulo X
+        rf'\b({book_pattern})\b',                                                         # Apenas o nome do livro
+        rf'\b({book_pattern})\b\s+(\d+)\s+(\d+)',                                         # Livro X Y (onde X é o capítulo e Y é o versículo)
+    ]
+
+    # Inicializa as variáveis
+    livro = capitulo = versiculo = None
+
+    # Procurar correspondências
+    for pattern in patterns:
+        matches = re.findall(pattern, texto, re.IGNORECASE)
+        if matches:
+            # Processa as correspondências e interrompe após a primeira encontrada
+            match = matches[0]
+            if len(match) == 3:
+                livro, capitulo, versiculo = match
+            elif len(match) == 2:
+                livro, capitulo = match
+                versiculo = '1'
+            elif len(match) == 1:
+                livro = match[0]
+                capitulo = '1'
+                versiculo = '1'
+            break  # Interrompe o loop após encontrar a primeira correspondência
+
+    # Verifica se encontrou alguma correspondência
+    if livro is None:
+        print("Nenhuma referência bíblica encontrada.")
+        return
+
+    # Normaliza o nome do livro
+    livro_normalizado = normalizar_nome_livro(livro)
+    if livro_normalizado is None:
+        print(f"Erro: Referência inválida, livro '{livro}' não reconhecido.")
+        return
+
+    # Exibe e envia para o Holyrics
+    print(f"Referência encontrada: {livro_normalizado} {capitulo}:{versiculo}")
+    alternar_para_holyrics()
+    digitar_comandos(livro_normalizado, capitulo, versiculo)
+
+# Função para alternar para o Holyrics
+def alternar_para_holyrics():
+    try:
+        # Usa o wmctrl para encontrar a janela do Holyrics e trazê-la para o foco
+        resultado = subprocess.run(["wmctrl", "-l"], capture_output=True, text=True)
+        linhas = resultado.stdout.splitlines()
+        for linha in linhas:
+            if "Holyrics" in linha:
+                janela_id = linha.split()[0]
+                subprocess.run(["wmctrl", "-i", "-a", janela_id])
+                time.sleep(1)
+                return
+        print("Janela do Holyrics não encontrada. Verifique se o programa está aberto.")
+    except Exception as e:
+        print(f"Erro ao tentar focar a janela: {e}")
+
+# Função para digitar o livro, capítulo e versículo no Holyrics
+def digitar_comandos(livro, capitulo, versiculo):
+    print(f"Digitando comandos: Livro: {livro}, Capítulo: {capitulo}, Versículo: {versiculo}")
+
+    # Tempo de espera
+    x = 0.1
+
+    try:
+        # Converte o nome do livro para minúsculas antes de digitar
+        livro = livro.lower()
+        time.sleep(x)
+
+        # Digita o nome do livro no campo de pesquisa do Holyrics
+        pyautogui.press('esc')
+        time.sleep(0.9)
+        pyautogui.write(livro)
+        pyautogui.press('enter')
+
+        # Digita o capítulo
+        pyautogui.write(str(capitulo))
+        pyautogui.press('enter')
+
+        # Digita o versículo
+        pyautogui.write(str(versiculo))
+        #pyautogui.press('enter')
+        time.sleep(x)
+        pyautogui.press('enter')
+
+        # Pressiona F4 para confirmar a seleção no Holyrics
+        # pyautogui.press('f4')
+        # time.sleep(x)
+    except Exception as e:
+        print(f"Erro ao digitar comandos: {e}")
+
+# Função para listar microfones disponíveis
+def listar_microfones():
+    microfones = sr.Microphone.list_microphone_names()
+    print("Microfones disponíveis:")
+    for i, mic in enumerate(microfones):
+        print(f"{i}: {mic}")
+    return microfones
+
+# Lista de palavras para avançar e retroceder versículos
+palavras_proximo = ["próximo", "próximo versículo", "continuando", "mais um", "seguindo"]
+palavras_anterior = ["anterior", "versículo anterior", "antes", "o versículo antes desse", "voltar"]
+
+# Função para verificar se o comando é para o próximo ou anterior versículo
+def verificar_comando_proximo_anterior(texto):
+    texto = texto.lower()
+
+    # Verifica se o texto contém alguma palavra que indica 'próximo'
+    for palavra in palavras_proximo:
+        if palavra in texto:
+            print("Comando: Próximo versículo")
+            avancar_versiculo()
+            return
+
+    # Verifica se o texto contém alguma palavra que indica 'anterior'
+    for palavra in palavras_anterior:
+        if palavra in texto:
+            print("Comando: Versículo anterior")
+            voltar_versiculo()
+            return
+
+# Função para avançar o versículo
+def avancar_versiculo():
+    try:
+        print("Avançando para o próximo versículo.")
+        pyautogui.press('right')  # Pressiona a seta para a direita
+        time.sleep(0.1)  # Tempo de espera para garantir que o Holyrics processe o comando
+    except Exception as e:
+        print(f"Erro ao tentar avançar o versículo: {e}")
+
+# Função para voltar o versículo
+def voltar_versiculo():
+    try:
+        print("Voltando para o versículo anterior.")
+        pyautogui.press('left')  # Pressiona a seta para a esquerda
+        time.sleep(0.1)  # Tempo de espera para garantir que o Holyrics processe o comando
+    except Exception as e:
+        print(f"Erro ao tentar voltar o versículo: {e}")
+
+# Função para salvar versículos encontrados em um arquivo JSON
+def salvar_versiculos_arquivo(referencias, caminho_arquivo="versiculos_encontrados.json"):
+    with open(caminho_arquivo, "w", encoding="utf-8") as f:
+        json.dump(referencias, f, ensure_ascii=False, indent=4)
+
+def carregar_versiculos(caminho_arquivo="versiculos_encontrados.json"):
+    try:
+        with open(caminho_arquivo, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return []
+
+# Classe principal da aplicação
+class App:
+    def __init__(self, master):
+        self.master = master
+        master.title("AutoVersi")
+
+        # Variável para controlar o estado da captura de voz
+        self.capturando = False
+
+        # Inicializa o reconhecedor de voz
+        self.rec = sr.Recognizer()
+
+        # Listar microfones disponíveis
+        self.microfones = listar_microfones()
+
+        # Variable to hold selected microphone
+        self.microfone_var = tk.StringVar()
+        self.microfone_var.set("Selecione o microfone")
+
+        self.dropdown_microfone = tk.OptionMenu(master, self.microfone_var, *self.microfones)
+        self.dropdown_microfone.config(width=50)
+
+        # Criação dos widgets
+        self.btn_iniciar = tk.Button(master, text="Iniciar Captura", command=self.iniciar_captura)
+        self.btn_parar = tk.Button(master, text="Parar Captura", command=self.parar_captura, state=tk.DISABLED)
+        self.btn_selecionar_boletim = tk.Button(master, text="Selecionar Boletim", command=self.processar_boletim)
+
+        # Label para mostrar erros e status
+        self.label_status = tk.Label(master, text="", fg="red")
+
+        # Label para mostrar o texto reconhecido
+        self.label_recognized_text = tk.Label(master, text="", fg="blue")
+
+        # Text widget para mostrar os versículos encontrados
+        self.text_versiculos = tk.Text(master, height=10, width=50)
+
+        # Layout dos widgets
+        self.dropdown_microfone.pack(pady=5)
+        self.btn_iniciar.pack(pady=5)
+        self.btn_parar.pack(pady=5)
+        self.btn_selecionar_boletim.pack(pady=5)
+        self.label_status.pack(pady=5)
+        self.label_recognized_text.pack(pady=5)
+        self.text_versiculos.pack(pady=5)
+
+        # Thread para o reconhecimento de fala
+        self.thread_escuta = None
+        self.stop_listening = None
+
+    def iniciar_captura(self):
+        if not self.capturando:
+            # Get selected microphone index
+            selected_mic = self.microfone_var.get()
+            if selected_mic == "Selecione o microfone":
+                self.label_status['text'] = "Por favor, selecione um microfone antes de iniciar a captura."
+                return
+            try:
+                self.indice_microfone = self.microfones.index(selected_mic)
+            except ValueError:
+                self.label_status['text'] = "Microfone selecionado não encontrado."
+                return
+
+            # Limpa qualquer mensagem de erro anterior
+            self.label_status['text'] = ""
+            self.capturando = True
+            self.btn_iniciar.config(state=tk.DISABLED)
+            self.btn_parar.config(state=tk.NORMAL)
+            self.thread_escuta = threading.Thread(target=self.reconhecer_fala_continuamente)
+            self.thread_escuta.start()
+
+    def parar_captura(self):
+        if self.capturando:
+            self.capturando = False
+            self.btn_iniciar.config(state=tk.NORMAL)
+            self.btn_parar.config(state=tk.DISABLED)
+            if self.stop_listening:
+                self.stop_listening(wait_for_stop=False)
+
+    def processar_boletim(self):
+        caminho_pdf = selecionar_arquivo_boletim()
+        if caminho_pdf:
+            texto_pdf = ler_boletim.extrair_texto_pdf(caminho_pdf)
+            referencias = ler_boletim.encontrar_referencias(texto_pdf)
+            salvar_versiculos_arquivo(referencias)
+            self.label_status['text'] = "Referências encontradas no boletim foram salvas."
+            self.exibir_versiculos_terminal()
+        else:
+            self.label_status['text'] = "Nenhum arquivo selecionado."
+
+    def exibir_versiculos_terminal(self):
+        referencias = carregar_versiculos()
+        self.text_versiculos.delete('1.0', tk.END)
+        self.text_versiculos.insert(tk.END, "Versículos encontrados:\n")
+        for ref in referencias:
+            versiculo_texto = f"{ref['livro']} {ref['capitulo']}:{ref['versiculo_inicio']}"
+            if ref['versiculo_inicio'] != ref['versiculo_fim']:
+                versiculo_texto += f"-{ref['versiculo_fim']}"
+            self.text_versiculos.insert(tk.END, versiculo_texto + "\n")
+
+    def reconhecer_fala_continuamente(self):
+        try:
+            mic = sr.Microphone(device_index=self.indice_microfone)
+        except Exception as e:
+            self.label_status['text'] = f"Erro ao acessar o microfone: {e}"
+            self.capturando = False
+            self.btn_iniciar.config(state=tk.NORMAL)
+            self.btn_parar.config(state=tk.DISABLED)
+            return
+
+        # Ajusta para ruído ambiente
+        with mic as source:
+            self.rec.adjust_for_ambient_noise(source)
+            print("Aguardando fala...")
+
+        def callback(recognizer, audio):
+            try:
+                texto = recognizer.recognize_google(audio, language="pt-BR")
+                print("Texto reconhecido:", texto)
+                self.label_recognized_text['text'] = "Texto reconhecido: " + texto
+
+                verificar_comando_proximo_anterior(texto)
+                extrair_referencia_biblica(texto)
+
+            except sr.UnknownValueError:
+                self.label_status['text'] = "Desculpe, não entendi o que você disse."
+            except sr.RequestError as e:
+                self.label_status['text'] = f"Erro ao acessar o serviço de reconhecimento de fala: {e}"
+
+        self.stop_listening = self.rec.listen_in_background(mic, callback)
+
+        while self.capturando:
+            time.sleep(0.1)
+
+        if self.stop_listening:
+            self.stop_listening(wait_for_stop=False)
+            self.stop_listening = None
+
+# Função para selecionar arquivo PDF usando Tkinter
+def selecionar_arquivo_boletim():
+    root = tk.Tk()
+    root.withdraw()
+    caminho_pdf = filedialog.askopenfilename(
+        title="Selecione o boletim em PDF",
+        filetypes=[("PDF files", "*.pdf")]
+    )
+    root.destroy()
+    return caminho_pdf
+
+# Executa a aplicação
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = App(root)
+    root.mainloop()
