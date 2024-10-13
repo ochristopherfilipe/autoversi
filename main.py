@@ -228,8 +228,50 @@ class App:
         self.stop_listening = None
 
         # Lista de palavras para avançar e retroceder versículos
-        self.palavras_proximo = ["próximo", "próximo versículo", "continuando", "mais um", "seguindo"]
-        self.palavras_anterior = ["anterior", "versículo anterior", "antes", "o versículo antes desse", "voltar"]
+        self.palavras_proximo = [
+            "próximo", 
+            "próximo versículo", 
+            "continuando", 
+            "mais um", 
+            "seguindo", 
+            "depois desse", 
+            "o próximo", 
+            "ir para o próximo", 
+            "verso seguinte", 
+            "continuar", 
+            "prossiga", 
+            "segue", 
+            "pule para o próximo", 
+            "próximo texto", 
+            "continua", 
+            "vai para o próximo", 
+            "mais um versículo", 
+            "leia o próximo", 
+            "avançar", 
+            "passar para o próximo"
+        ]
+
+        self.palavras_anterior = [
+            "anterior", 
+            "versículo anterior", 
+            "antes", 
+            "o versículo antes desse", 
+            "voltar", 
+            "voltar atrás", 
+            "retroceder", 
+            "o anterior", 
+            "volte", 
+            "verso anterior", 
+            "ir para o anterior", 
+            "leia o anterior", 
+            "pule para o anterior", 
+            "retorne", 
+            "retornar", 
+            "volte para o anterior", 
+            "recuar", 
+            "rever o anterior", 
+            "passar para o anterior"
+        ]
 
         # Lista de referências carregadas do boletim
         self.referencias_boletim = []
