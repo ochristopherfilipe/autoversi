@@ -1,0 +1,5 @@
+pyautogui
+SpeechRecognition
+PyPDF2
+PyAudio
+openpyxl 
