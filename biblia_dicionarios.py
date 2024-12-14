@@ -68,7 +68,6 @@ livros_biblia = {
     "Apocalipse": ["apocalipse", "apo", "ap"]
 }
 
-# Dicionário para converter números por extenso em números
 numeros_por_extenso = {
     "um": "1", "dois": "2", "três": "3", "quatro": "4", "cinco": "5",
     "seis": "6", "sete": "7", "oito": "8", "nove": "9", "dez": "10",
@@ -118,7 +117,6 @@ numeros_por_extenso = {
     "cento e quarenta e quatro": "144", "cento e quarenta e cinco": "145", "cento e quarenta e seis": "146", 
     "cento e quarenta e sete": "147", "cento e quarenta e oito": "148", "cento e quarenta e nove": "149", 
     "cento e cinquenta": "150",    
-    # Números ordinais
     'primeiro': '1',
     'primeira': '1',
     'segundo': '2',
